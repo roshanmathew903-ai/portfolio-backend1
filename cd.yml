@@ -1,0 +1,20 @@
+name: CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    # Template for Render Deployment
+    - name: Deploy to Render
+      run: |
+        # Replace the URL with your Render Deploy Hook
+        # curl -X POST https://api.render.com/deploy/srv-your-service-id?key=YOUR_KEY
+        echo "Deployment triggered (placeholder)"
