@@ -38,7 +38,11 @@ db.connect((err) => {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'https://personal-portfolilo.onrender.com',
+    methods: ['POST', 'GET', 'OPTIONS'],
+    allowedHeaders: ['Content-Type']
+}));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, '../'))); // Serve frontend from root
 
