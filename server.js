@@ -1,11 +1,41 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const fs = require('fs');
+const mysql = require('mysql2');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3006;
+
+// Database Setup (TiDB Cloud)
+const db = mysql.createConnection({
+    host: 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
+    port: 4000,
+    user: '2zbRQDk3tCQhRnD.root',
+    password: '9kBUH8ZpJ7dt1VZj', 
+    database: 'test',
+    ssl: {
+        rejectUnauthorized: true
+    }
+});
+
+db.connect((err) => {
+    if (err) {
+        console.error('Error connecting to MySQL:', err.message);
+    } else {
+        console.log('Connected to MySQL database.');
+        db.query(`CREATE TABLE IF NOT EXISTS messages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            subject VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error('Error creating table:', err.message);
+        });
+    }
+});
 
 // Middleware
 app.use(cors());
@@ -20,41 +50,22 @@ app.post('/api/contact', (req, res) => {
         return res.status(400).json({ error: 'All fields are required.' });
     }
 
-    const newMessage = {
-        id: Date.now(),
-        name,
-        email,
-        subject,
-        message,
-        timestamp: new Date().toISOString()
-    };
+    const sql = `INSERT INTO messages (name, email, subject, message) VALUES (?, ?, ?, ?)`;
+    const params = [name, email, subject, message];
 
-    const filePath = path.join(__dirname, 'contact_messages.json');
-
-    // Read existing messages
-    fs.readFile(filePath, 'utf8', (err, data) => {
-        let messages = [];
-        if (!err && data) {
-            try {
-                messages = JSON.parse(data);
-            } catch (e) {
-                console.error("Error parsing messages:", e);
-                messages = [];
-            }
+    db.query(sql, params, (err, result) => {
+        if (err) {
+            console.error("Error saving message:", err.message);
+            return res.status(500).json({ error: 'Failed to save message.' });
         }
-
-        messages.push(newMessage);
-
-        // Write back to file
-        fs.writeFile(filePath, JSON.stringify(messages, null, 2), (err) => {
-            if (err) {
-                console.error("Error saving message:", err);
-                return res.status(500).json({ error: 'Failed to save message.' });
-            }
-            res.status(200).json({ message: 'Message sent successfully!' });
+        console.log("Message saved. Sending response to client.");
+        res.status(200).json({ 
+            message: 'Message sent successfully!',
+            id: result.insertId 
         });
     });
 });
+
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
